@@ -1,5 +1,5 @@
 /**
- * DeadSimple autocomplete javascript plugin
+ * DeadSimple Autocomplete javascript plugin
  * @todo handle arrays what contains non-object values (i.e. string, int, etc)
  * @todo what actually should be selected? look for the item/key values
  *       and check if they are correct and used correctly
@@ -13,76 +13,83 @@
 class DSAutocomplete {
   /**
    * Autocomplete constructor
-   * @param {Object} options Plugin config
+   * @param {HTMLInputElement} element HTML input element
+   * @param {DSAConfig} options Plugin config
+   * @param {DSAKeyboardConfig} keyboardOptions
    */
-  constructor (options) {
+  constructor (element, options, keyboardOptions) {
     /**
      * Plugin elements
-     * @type {Object}
+     * @type {{input, results: HTMLElement}}
      */
     this.elements = {
-      input: options.element,
+      input: element,
       results: this.getSearchResultsContainer()
     }
 
     /**
-     * Plugin state values
-     * @todo Refactoring required. Remove a service variables
-     * @type {[type]}
+     * Default plugin config
+     * @typedef {{itemValuePropertyName: string, minCharactersForSearch: number, items: Array}} DSAConfig
      */
-    this.state = Object.assign({
-      /**
-       * Minimal characters required for the results fetching
-       * @type {Number}
-       */
-      minCharactersForSearch: 3,
-      highlightedElement: null,
-      selectedElement: null,
-      itemValue: 'name',
-      keyValue: 'name',
-      results: [],
+    this.defaultConfig = {
+      /** Search source */
       items: [],
-      query: null,
+      /** Name of the property with value should be displayed in list and in input when selected */
+      itemValuePropertyName: 'name',
+      /** Minimal characters required for the results fetching */
+      minCharactersForSearch: 3
+    }
+
+    /**
+     * Actual plugin config
+     * @type {DSAConfig}
+     */
+    this.config = Object.assign(this.defaultConfig, options)
+
+    /**
+     * Plugin state values
+     * @type {{debounce: number, highlightedElement: null, selectedElement: null, query: string, focusedResult: null, focused: boolean, results: Array}}
+     */
+    this.state = {
+      query: '',
+      results: [],
       focused: false,
+      debounce: 0,
       focusedResult: null,
-      debounce: null
-    }, options)
+      selectedElement: null,
+      highlightedElement: null
+    }
 
     /**
      * Plugin keyboard settings
-     * @todo User should be able to override these settings somehow
-     * @type {Object}
+     * @typedef {{cancel: number[], ignored: number[], select: number[], up: number[], down: number[]}} DSAKeyboardConfig
      */
     this.keyboard = {
-      keys: {
-        /**
-         * Keys for "cancel" (i.e. hide results) event
-         * @type {Array}
-         */
-        cancel: [27],
-        /**
-         * Keys for "select" event (i.e. select currently highlighted result)
-         * @type {Array}
-         */
-        select: [9, 13],
-        /**
-         * Ignored keys, what should't cause results refetching
-         * @type {Array}
-         */
-        ignored: [37, 39, 38, 40, 13, 27, 16, 9],
-        /**
-         * Keys for navigate on the results to the up
-         * @todo should be an array
-         * @type {Number}
-         */
-        up: 38,
-        /**
-         * Keys for navigate on the results to the down
-         * @todo should be an array
-         * @type {[type]}
-         */
-        down: 40
-      }
+      /**
+       * Keys for "cancel" (i.e. hide results) event
+       * @type number[]
+       */
+      cancel: [27],
+      /**
+       * Keys for "select" event (i.e. select currently highlighted result)
+       * @type number[]
+       */
+      select: [9, 13],
+      /**
+       * Ignored keys, what should't cause results refetching
+       * @type {[Number]}
+       */
+      ignored: [37, 39, 38, 40, 13, 27, 16, 9],
+      /**
+       * Keys for navigate on the results to the up
+       * @type number[]
+       */
+      up: [38],
+      /**
+       * Keys for navigate on the results to the down
+       * @type number[]
+       */
+      down: [40]
     }
 
     this.init()
@@ -153,25 +160,25 @@ class DSAutocomplete {
    * @todo Handle middle mouse key
    */
   addEventListeners () {
-    this.elements.input.addEventListener('blur', e => this.handleBlur(e))
-    this.elements.input.addEventListener('focus', e => this.handleFocus(e))
-    this.elements.input.addEventListener('keyup', e => this.handleKeyUpOnInput(e))
-    this.elements.input.addEventListener('keydown', e => this.handleKeyDownOnInput(e))
+    this.elements.input.addEventListener('blur', (e) => this.handleBlur(e))
+    this.elements.input.addEventListener('focus', () => this.handleFocus())
+    this.elements.input.addEventListener('keyup', (e) => this.handleKeyUpOnInput(e))
+    this.elements.input.addEventListener('keydown', (e) => this.handleKeyDownOnInput(e))
 
     if (!window.autocompleteEventListenersAdded) {
-      window.addEventListener('click', e => this.handleClickOnDocument(e))
+      window.addEventListener('click', (e) => this.handleClickOnDocument(e))
       window.autocompleteEventListenersAdded = true
     }
 
-    window.addEventListener('resize', e => this.handleResize)
-    window.addEventListener('orientationchange', e => this.handleResize)
+    window.addEventListener('resize', () => this.handleResize())
+    window.addEventListener('orientationchange', () => this.handleResize())
   }
 
   /**
    * Handle screen size changes
    * @return {undefined}
    */
-  handleResize() {
+  handleResize () {
     this.updateResultsPosition()
   }
 
@@ -181,6 +188,7 @@ class DSAutocomplete {
    * @return {undefined}
    */
   handleBlur (e) {
+    // noinspection JSUnresolvedVariable
     if (!e.relatedTarget || !e.relatedTarget.classList.contains('autocomplete__results')) {
       this.setFocused(false)
     }
@@ -199,14 +207,15 @@ class DSAutocomplete {
   /**
    * Handle key up on the search input
    * @param  {KeyboardEvent} e Keyboard event
-   * @return {undefined}
    */
   handleKeyUpOnInput (e) {
-    if (!e.ctrlKey && this.keyboard.keys.ignored.indexOf(e.keyCode) < 0 && !(e.shiftKey && this.keyboard.keys.ignored.indexOf(e.keyCode) > -1)) {
+    const activeKey = this.getKeyCodeFromEvent(e)
+
+    if (!e.ctrlKey && !this.isIgnoredKey(activeKey) && !(e.shiftKey && this.isIgnoredKey(activeKey))) {
       this.setFocused(true)
       this.updateQuery(this.elements.input.value)
       this.updateResults()
-    } else if (this.isNavigationKeyPressed(e)) {
+    } else if (this.isNavigationKey(activeKey)) {
       if (!this.state.results.length) {
         return
       }
@@ -214,7 +223,7 @@ class DSAutocomplete {
       if (this.state.focusedResult === null) {
         this.state.focusedResult = 0
       } else {
-        this.state.focusedResult += e.keyCode === 38 ? -1 : 1
+        this.state.focusedResult += activeKey === 38 ? -1 : 1
         if (this.state.focusedResult >= this.state.results.length) {
           this.state.focusedResult = 0
         } else if (this.state.focusedResult < 0) {
@@ -227,41 +236,51 @@ class DSAutocomplete {
   }
 
   /**
-   * Check, if event is about navigation key pressed.
-   * Returns true if so, false otherwise
-   * @param  {KeyboardEvent} e Keyboard event
+   * Check if passed keycode should be ignored
+   * @param {Number} keyCode
    * @return {Boolean}
    */
-  isNavigationKeyPressed (e) {
-    return e.keyCode === 38 || e.keyCode === 40
+  isIgnoredKey (keyCode) {
+    return this.keyboard.ignored.indexOf(keyCode) >= 0
+  }
+
+  /**
+   * Check, if event is about navigation key pressed.
+   * Returns true if so, false otherwise
+   * @param  {Number} keyCode Keyboard event
+   * @return {Boolean}
+   */
+  isNavigationKey (keyCode) {
+    return this.keyboard.up.indexOf(keyCode) >= 0 || this.keyboard.down.indexOf(keyCode) >= 0
   }
 
   /**
    * Handle keydown on the search input
    * @param  {KeyboardEvent} e Keyboard event
-   * @return {undefined}
    */
   handleKeyDownOnInput (e) {
-    if (this.keyboard.keys.select.indexOf(e.keyCode) >= 0 && this.state.selectedElement >= 0) {
+    const key = this.getKeyCodeFromEvent(e)
+
+    if (this.keyboard.select.indexOf(key) >= 0 && this.state.selectedElement >= 0) {
       if (!this.elements.results.classList.contains('autocomplete__results_hidden') && this.state.results[this.state.focusedResult]) {
-        if (e.keyCode !== 9) {
+        if (key !== 9) {
           e.preventDefault()
         }
-        this.elements.input.value = this.state.results[this.state.focusedResult][this.state.itemValue]
+        this.elements.input.value = this.state.results[this.state.focusedResult][this.config.itemValuePropertyName]
       }
     }
 
-    if (e.keyCode === 9) {
+    if (key === 9) {
       this.hideResults()
     }
   }
 
   /**
    * Handle click on the document
-   * @param  {MouseEvent} e Mouse event
-   * @return {undefined}
+   * @param {Event} e Mouse event
    */
   handleClickOnDocument (e) {
+    // noinspection JSUnresolvedVariable
     if (e.target.className.indexOf('autocomplete') < 0) {
       this.hideResults()
       this.setFocused(false)
@@ -273,8 +292,8 @@ class DSAutocomplete {
    * @return {undefined}
    */
   updateResults () {
-    if (this.state.query.length >= this.state.minCharactersForSearch) {
-      this.searchResults(this.state.query, this.state.items)
+    if (this.state.query.length >= this.config.minCharactersForSearch) {
+      this.searchResults(this.state.query, this.config.items)
     } else {
       this.hideResults()
     }
@@ -282,7 +301,6 @@ class DSAutocomplete {
 
   /**
    * Hide search results container
-   * @return {undefined}
    */
   hideResults () {
     this.elements.results.classList.add('autocomplete__results_hidden')
@@ -291,7 +309,6 @@ class DSAutocomplete {
   /**
    * Show search results container
    * @param  {Boolean} [force=false] Forced value
-   * @return {undefined}
    */
   showResults (force = false) {
     if (force) {
@@ -317,7 +334,7 @@ class DSAutocomplete {
       const searchResultsElement = document.createElement('div')
 
       searchResultsElement.className = 'autocomplete__result'
-      searchResultsElement.innerHTML = item[this.state.itemValue]
+      searchResultsElement.innerHTML = item[this.config.itemValuePropertyName]
 
       if (index === this.state.focusedResult) {
         searchResultsElement.className += ' autocomplete__result_focused'
@@ -328,7 +345,7 @@ class DSAutocomplete {
       searchResultsElement.addEventListener('click', () => {
         this.state.focusedResult = index
         this.showResults()
-        this.elements.input.value = this.state.results[this.state.focusedResult][this.state.itemValue]
+        this.elements.input.value = this.state.results[this.state.focusedResult][this.config.itemValuePropertyName]
         this.hideResults()
       })
     })
@@ -351,7 +368,6 @@ class DSAutocomplete {
   /**
    * Update search query
    * @param  {String} value Search query
-   * @return {undefined}
    */
   updateQuery (value) {
     this.state.query = value
@@ -367,7 +383,7 @@ class DSAutocomplete {
   builtInSearchFunction (query, items) {
     return items.filter(item => {
       return (
-        item[this.state.keyValue]
+        item[this.config.itemValuePropertyName]
           .toLowerCase()
           .indexOf(query.toLowerCase()) !== 0
       )
@@ -376,7 +392,6 @@ class DSAutocomplete {
 
   /**
    * Show loading message
-   * @return {undefined}
    */
   showLoading () {
     if (!this.state.focused) {
@@ -402,7 +417,6 @@ class DSAutocomplete {
    * Shows results (or no results message) when done
    * @param  {String} query Search query
    * @param  {Function|Object|Array|Promise} items Search source
-   * @return {undefined}
    */
   searchResults (query, items) {
     this.state.focusedResult = null
@@ -430,12 +444,13 @@ class DSAutocomplete {
   }
 
   /**
-   * Get search results from given source
+   * Get search results from given source.
+   * Returns Promise, what should be resolved with array of results on success
    * @param  {String} query Search query
    * @param  {Function|Object|Array|Promise} src Search source
-   * @return {Array} Search results
+   * @return {Promise} Search results promise
    */
-  getSearchResultsFromSource(query, src) {
+  getSearchResultsFromSource (query, src) {
     let result = src
 
     if (typeof src === 'function') {
@@ -444,7 +459,7 @@ class DSAutocomplete {
 
     if (result instanceof Promise) {
       return result
-    } else if (items instanceof Object) {
+    } else if (result instanceof Object) {
       result = Object.values(src)
     }
 
@@ -452,10 +467,35 @@ class DSAutocomplete {
       if (result instanceof Array) {
         resolve(result)
       } else {
-        reject('Search results is not an array')
+        reject(new TypeError('Search results is not an array'))
       }
     })
   }
+
+  /**
+   * Get event key code
+   * @param {KeyboardEvent|MouseEvent} e
+   * @return {Number}
+   */
+  getKeyCodeFromEvent (e) {
+    let code
+
+    if (e.hasOwnProperty('key')) {
+      code = e.key
+    } else {
+      if (e.hasOwnProperty('keyIdentifier')) {
+        code = e.keyIdentifier
+      } else {
+        if (e.hasOwnProperty('keyCode')) {
+          // noinspection JSDeprecatedSymbols
+          code = e.keyCode
+        }
+      }
+    }
+
+    return code
+  }
 }
 
+// noinspection JSUnusedGlobalSymbols
 export default DSAutocomplete

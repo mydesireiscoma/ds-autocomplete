@@ -4,7 +4,9 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "rollup -cw",
+    "build": "rollup -c"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +16,8 @@
     "@babel/preset-env": "^7.3.1",
     "rollup-plugin-babel": "^4.3.2",
     "standard": "^12.0.1"
+  },
+  "dependencies": {
+    "rollup-plugin-standard": "^1.0.0"
   }
 }
