@@ -1442,14 +1442,14 @@ function getResultsAsync (query) {
 
 document.querySelectorAll('.autocomplete__input').forEach((el) => {
   if (Math.random() >= 0.5) {
-    new Autocomplete({
+    new DSAutocomplete({
       element: el,
       items: (query) => {
         return getResultsAsync(query)
       }
     })
   } else {
-    new Autocomplete({
+    new DSAutocomplete({
       element: el,
       items: items,
       keyValue: 'country',

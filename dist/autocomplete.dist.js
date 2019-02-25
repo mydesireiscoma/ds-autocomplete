@@ -1,4 +1,4 @@
-var Autocomplete = (function () {
+var DSAutocomplete = (function () {
   'use strict';
 
   function _classCallCheck(instance, Constructor) {
@@ -23,17 +23,47 @@ var Autocomplete = (function () {
     return Constructor;
   }
 
-  var Autocomplete =
+  /**
+   * DeadSimple autocomplete javascript plugin
+   * @todo handle arrays what contains non-object values (i.e. string, int, etc)
+   * @todo what actually should be selected? look for the item/key values
+   *       and check if they are correct and used correctly
+   * @todo provide callbacks for each step on the lifecycle
+   * @todo allow user to override some critical parts by providing custom
+   *       functions (i.e. search results, filter results, select item)
+   * @todo allow user to control search results position and mb other behaviour
+   * @todo allow user to control what actually should be displayed in input
+   * @todo tests
+   */
+  var DSAutocomplete =
   /*#__PURE__*/
   function () {
-    function Autocomplete(options) {
-      _classCallCheck(this, Autocomplete);
+    /**
+     * Autocomplete constructor
+     * @param {Object} options Plugin config
+     */
+    function DSAutocomplete(options) {
+      _classCallCheck(this, DSAutocomplete);
 
+      /**
+       * Plugin elements
+       * @type {Object}
+       */
       this.elements = {
         input: options.element,
         results: this.getSearchResultsContainer()
+        /**
+         * Plugin state values
+         * @todo Refactoring required. Remove a service variables
+         * @type {[type]}
+         */
+
       };
       this.state = Object.assign({
+        /**
+         * Minimal characters required for the results fetching
+         * @type {Number}
+         */
         minCharactersForSearch: 3,
         highlightedElement: null,
         selectedElement: null,
@@ -46,19 +76,56 @@ var Autocomplete = (function () {
         focusedResult: null,
         debounce: null
       }, options);
+      /**
+       * Plugin keyboard settings
+       * @todo User should be able to override these settings somehow
+       * @type {Object}
+       */
+
       this.keyboard = {
         keys: {
+          /**
+           * Keys for "cancel" (i.e. hide results) event
+           * @type {Array}
+           */
           cancel: [27],
+
+          /**
+           * Keys for "select" event (i.e. select currently highlighted result)
+           * @type {Array}
+           */
           select: [9, 13],
+
+          /**
+           * Ignored keys, what should't cause results refetching
+           * @type {Array}
+           */
           ignored: [37, 39, 38, 40, 13, 27, 16, 9],
+
+          /**
+           * Keys for navigate on the results to the up
+           * @todo should be an array
+           * @type {Number}
+           */
           up: 38,
+
+          /**
+           * Keys for navigate on the results to the down
+           * @todo should be an array
+           * @type {[type]}
+           */
           down: 40
         }
       };
       this.init();
     }
+    /**
+     * Initiate plugin
+     * @return {undefined}
+     */
 
-    _createClass(Autocomplete, [{
+
+    _createClass(DSAutocomplete, [{
       key: "init",
       value: function init() {
         if (!this.getSearchResultsContainer()) {
@@ -68,6 +135,13 @@ var Autocomplete = (function () {
 
         this.addEventListeners();
       }
+      /**
+       * Set search input focused state
+       * Attaches classes to the search input and hides results depending on the
+       * value passed in
+       * @param {Boolean} value True for focused state and false for blur
+       */
+
     }, {
       key: "setFocused",
       value: function setFocused(value) {
@@ -80,11 +154,21 @@ var Autocomplete = (function () {
 
         this.state.focused = value;
       }
+      /**
+       * Attach search results container to the component
+       * @return {[type]} [description]
+       */
+
     }, {
       key: "attachSearchResultsContainer",
       value: function attachSearchResultsContainer() {
         this.elements.results = this.getSearchResultsContainer();
       }
+      /**
+       * Create search results container
+       * @return {undefined}
+       */
+
     }, {
       key: "createSearchResultsContainer",
       value: function createSearchResultsContainer() {
@@ -94,17 +178,26 @@ var Autocomplete = (function () {
         documentFragment.appendChild(searchResultsElement);
         document.body.appendChild(documentFragment);
       }
+      /**
+       * Returns search results container element
+       * @return {HTMLElement} [description]
+       */
+
     }, {
       key: "getSearchResultsContainer",
       value: function getSearchResultsContainer() {
         return document.querySelector('.autocomplete__results');
       }
+      /**
+       * Attach event listeners
+       * @todo Handle middle mouse key
+       */
+
     }, {
       key: "addEventListeners",
       value: function addEventListeners() {
         var _this = this;
 
-        // handle middle mouse key
         this.elements.input.addEventListener('blur', function (e) {
           return _this.handleBlur(e);
         });
@@ -112,15 +205,15 @@ var Autocomplete = (function () {
           return _this.handleFocus(e);
         });
         this.elements.input.addEventListener('keyup', function (e) {
-          return _this.handleKeyUp(e);
+          return _this.handleKeyUpOnInput(e);
         });
         this.elements.input.addEventListener('keydown', function (e) {
-          return _this.handleKeyDown(e);
+          return _this.handleKeyDownOnInput(e);
         });
 
         if (!window.autocompleteEventListenersAdded) {
           window.addEventListener('click', function (e) {
-            return _this.handleClick(e);
+            return _this.handleClickOnDocument(e);
           });
           window.autocompleteEventListenersAdded = true;
         }
@@ -129,19 +222,25 @@ var Autocomplete = (function () {
           return _this.handleResize;
         });
         window.addEventListener('orientationchange', function (e) {
-          return _this.handleOrientationChange;
+          return _this.handleResize;
         });
       }
+      /**
+       * Handle screen size changes
+       * @return {undefined}
+       */
+
     }, {
       key: "handleResize",
       value: function handleResize() {
         this.updateResultsPosition();
       }
-    }, {
-      key: "handleOrientationChange",
-      value: function handleOrientationChange() {
-        this.handleResize();
-      }
+      /**
+       * Handle case, when search input lost focus
+       * @param  {FocusEvent} e Focus event
+       * @return {undefined}
+       */
+
     }, {
       key: "handleBlur",
       value: function handleBlur(e) {
@@ -149,6 +248,11 @@ var Autocomplete = (function () {
           this.setFocused(false);
         }
       }
+      /**
+       * Handle case, when the search input got focus
+       * @return {undefined}
+       */
+
     }, {
       key: "handleFocus",
       value: function handleFocus() {
@@ -156,9 +260,15 @@ var Autocomplete = (function () {
           this.showResults(true);
         }
       }
+      /**
+       * Handle key up on the search input
+       * @param  {KeyboardEvent} e Keyboard event
+       * @return {undefined}
+       */
+
     }, {
-      key: "handleKeyUp",
-      value: function handleKeyUp(e) {
+      key: "handleKeyUpOnInput",
+      value: function handleKeyUpOnInput(e) {
         if (!e.ctrlKey && this.keyboard.keys.ignored.indexOf(e.keyCode) < 0 && !(e.shiftKey && this.keyboard.keys.ignored.indexOf(e.keyCode) > -1)) {
           this.setFocused(true);
           this.updateQuery(this.elements.input.value);
@@ -180,22 +290,30 @@ var Autocomplete = (function () {
             }
           }
 
-          this.highlightFocusedResult();
+          this.showResults();
         }
       }
-    }, {
-      key: "highlightFocusedResult",
-      value: function highlightFocusedResult() {
-        this.showResults();
-      }
+      /**
+       * Check, if event is about navigation key pressed.
+       * Returns true if so, false otherwise
+       * @param  {KeyboardEvent} e Keyboard event
+       * @return {Boolean}
+       */
+
     }, {
       key: "isNavigationKeyPressed",
       value: function isNavigationKeyPressed(e) {
         return e.keyCode === 38 || e.keyCode === 40;
       }
+      /**
+       * Handle keydown on the search input
+       * @param  {KeyboardEvent} e Keyboard event
+       * @return {undefined}
+       */
+
     }, {
-      key: "handleKeyDown",
-      value: function handleKeyDown(e) {
+      key: "handleKeyDownOnInput",
+      value: function handleKeyDownOnInput(e) {
         if (this.keyboard.keys.select.indexOf(e.keyCode) >= 0 && this.state.selectedElement >= 0) {
           if (!this.elements.results.classList.contains('autocomplete__results_hidden') && this.state.results[this.state.focusedResult]) {
             if (e.keyCode !== 9) {
@@ -210,14 +328,25 @@ var Autocomplete = (function () {
           this.hideResults();
         }
       }
+      /**
+       * Handle click on the document
+       * @param  {MouseEvent} e Mouse event
+       * @return {undefined}
+       */
+
     }, {
-      key: "handleClick",
-      value: function handleClick(e) {
+      key: "handleClickOnDocument",
+      value: function handleClickOnDocument(e) {
         if (e.target.className.indexOf('autocomplete') < 0) {
           this.hideResults();
           this.setFocused(false);
         }
       }
+      /**
+       * Update search results
+       * @return {undefined}
+       */
+
     }, {
       key: "updateResults",
       value: function updateResults() {
@@ -227,11 +356,22 @@ var Autocomplete = (function () {
           this.hideResults();
         }
       }
+      /**
+       * Hide search results container
+       * @return {undefined}
+       */
+
     }, {
       key: "hideResults",
       value: function hideResults() {
         this.elements.results.classList.add('autocomplete__results_hidden');
       }
+      /**
+       * Show search results container
+       * @param  {Boolean} [force=false] Forced value
+       * @return {undefined}
+       */
+
     }, {
       key: "showResults",
       value: function showResults() {
@@ -241,15 +381,18 @@ var Autocomplete = (function () {
           this.elements.input.classList.add('autocomplete__input_focused');
         }
 
-        if (!this.elements.input.classList.contains('autocomplete__input_focused')) {
-          return;
+        if (this.elements.input.classList.contains('autocomplete__input_focused')) {
+          this.elements.results.innerHTML = '';
+          this.elements.results.appendChild(this.getResultsElements());
+          this.elements.results.classList.remove('autocomplete__results_hidden');
+          this.updateResultsPosition();
         }
-
-        this.elements.results.innerHTML = '';
-        this.elements.results.appendChild(this.getResultsElements());
-        this.elements.results.classList.remove('autocomplete__results_hidden');
-        this.updateResultsPosition();
       }
+      /**
+       * Builds and returns a DocumentFragment with search results elements
+       * @return {DocumentFragment} Search results document fragment
+       */
+
     }, {
       key: "getResultsElements",
       value: function getResultsElements() {
@@ -269,7 +412,7 @@ var Autocomplete = (function () {
           searchResultsElement.addEventListener('click', function () {
             _this2.state.focusedResult = index;
 
-            _this2.highlightFocusedResult();
+            _this2.showResults();
 
             _this2.elements.input.value = _this2.state.results[_this2.state.focusedResult][_this2.state.itemValue];
 
@@ -278,6 +421,11 @@ var Autocomplete = (function () {
         });
         return documentFragment;
       }
+      /**
+       * Updates search results container position
+       * @return {undefined}
+       */
+
     }, {
       key: "updateResultsPosition",
       value: function updateResultsPosition() {
@@ -287,11 +435,25 @@ var Autocomplete = (function () {
         this.elements.results.style.width = autocompleteBounds.width + 'px';
         this.elements.results.setAttribute('tabindex', '-1');
       }
+      /**
+       * Update search query
+       * @param  {String} value Search query
+       * @return {undefined}
+       */
+
     }, {
       key: "updateQuery",
       value: function updateQuery(value) {
         this.state.query = value;
       }
+      /**
+       * Builtin search function.
+       * May be overrided by custom user function
+       * @param  {String} query Search query
+       * @param  {Array} items Search source
+       * @return {Array} Search results
+       */
+
     }, {
       key: "builtInSearchFunction",
       value: function builtInSearchFunction(query, items) {
@@ -301,6 +463,11 @@ var Autocomplete = (function () {
           return item[_this3.state.keyValue].toLowerCase().indexOf(query.toLowerCase()) !== 0;
         });
       }
+      /**
+       * Show loading message
+       * @return {undefined}
+       */
+
     }, {
       key: "showLoading",
       value: function showLoading() {
@@ -318,6 +485,15 @@ var Autocomplete = (function () {
         this.elements.results.appendChild(fragment);
         this.elements.results.classList.remove('autocomplete__results_hidden');
       }
+      /**
+       * Search results for given query
+       * Shows loading message while searching results
+       * Shows results (or no results message) when done
+       * @param  {String} query Search query
+       * @param  {Function|Object|Array|Promise} items Search source
+       * @return {undefined}
+       */
+
     }, {
       key: "searchResults",
       value: function searchResults(query, items) {
@@ -328,44 +504,58 @@ var Autocomplete = (function () {
         this.state.debounce = setTimeout(function () {
           var jailedDebounceValue = _this4.state.debounce;
 
-          if (typeof items === 'function') {
-            var result = items(query);
+          var result = _this4.getSearchResultsFromSource(query, items);
 
-            if (result instanceof Promise) {
-              _this4.showLoading();
+          _this4.showLoading();
 
-              result.then(function (data) {
-                _this4.state.results = data;
-              }).catch(function () {
-                _this4.state.results = [];
-              }).finally(function () {
-                if (jailedDebounceValue === _this4.state.debounce) {
-                  _this4.showResults();
-                } else {
-                  _this4.showLoading();
-                }
-              });
-            } else {
-              _this4.state.results = result;
-
+          result.then(function (data) {
+            _this4.state.results = data;
+          }).catch(function () {
+            _this4.state.results = [];
+          }).finally(function () {
+            if (jailedDebounceValue === _this4.state.debounce) {
               _this4.showResults();
+            } else {
+              _this4.showLoading();
             }
-          } else if (items instanceof Array) {
-            _this4.state.results = _this4.builtInSearchFunction(query, items);
-
-            _this4.showResults();
-          } else if (items instanceof Object) {
-            console.warn('[autocomplete] objects are not supported yet');
-          } else {
-            console.error('[autocomplete] items property is should be: object, array, function or promise, got ', items);
-          }
+          });
         }, 250);
+      }
+      /**
+       * Get search results from given source
+       * @param  {String} query Search query
+       * @param  {Function|Object|Array|Promise} src Search source
+       * @return {Array} Search results
+       */
+
+    }, {
+      key: "getSearchResultsFromSource",
+      value: function getSearchResultsFromSource(query, src) {
+        var result = src;
+
+        if (typeof src === 'function') {
+          result = src(query);
+        }
+
+        if (result instanceof Promise) {
+          return result;
+        } else if (items instanceof Object) {
+          result = Object.values(src);
+        }
+
+        return new Promise(function (resolve, reject) {
+          if (result instanceof Array) {
+            resolve(result);
+          } else {
+            reject('Search results is not an array');
+          }
+        });
       }
     }]);
 
-    return Autocomplete;
+    return DSAutocomplete;
   }();
 
-  return Autocomplete;
+  return DSAutocomplete;
 
 }());
