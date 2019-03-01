@@ -1440,8 +1440,7 @@ document.querySelectorAll('.autocomplete__input').forEach((el) => {
   } else {
     new DSAutocomplete(el, {
       items: items,
-      keyValue: 'country',
-      itemValue: 'country'
+      itemValuePropertyName: 'country'
     })
   }
 })
