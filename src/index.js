@@ -1,6 +1,3 @@
-/**
- * DeadSimple Autocomplete javascript plugin
- */
 class DSAutocomplete {
   /**
    * Search result item
@@ -45,6 +42,7 @@ class DSAutocomplete {
   constructor (element, options, keyboardOptions) {
     /**
      * Autocomplete config
+     * @public
      * @typedef {Object} DSAConfig
      * @property {(DSASearchResultsSource)} items - Search source or search results itself
      * @property {Boolean} showResultsOnFocus - If true, search results (if exists) will be shown on focus
@@ -74,12 +72,14 @@ class DSAutocomplete {
 
     /**
      * Actual plugin config
+     * @public
      * @type {DSAConfig}
      */
     this.config = Object.assign(this.defaultConfig, options)
 
     /**
      * Plugin elements
+     * @private
      * @typedef {Object} DSAElements
      * @property {HTMLInputElement} input - HTML input
      * @property {HTMLElement} results - HTML element for search results
@@ -91,13 +91,14 @@ class DSAutocomplete {
 
     /**
      * Plugin state values
+     * @private
      * @typedef {Object} DSAState
      * @property {String} query - Search query
      * @property {Array} results - Search results
      * @property {Boolean} focused - Indicates, if autocomplete input is focused
      * @property {Number} debounce - ID value of the timer that is set
      * @property {Number} focusedResult - Currently focused element index
-     * @property {Object|String} selectedElement - Currently selected item
+     * @property {(Object|String)} selectedElement - Currently selected item
      * @property {Number} highlightedElement - Index of currently highlighted element
      */
     this.state = {
@@ -112,19 +113,22 @@ class DSAutocomplete {
 
     /**
      * Plugin keyboard settings
+     * @public
      * @typedef {Object} DSAKeyboardConfig
      * @property {Number[]} cancel - Keys used for hide search results without selecting currently highlighted item
      * @property {Number[]} select - Keys used for selection currently highlighted item
      * @property {Number[]} ignored - Keys, which are should not fire search results refetching
      * @property {Number[]} up - Keys used to navigate to the up on the search results
      * @property {Number[]} down - Keys used to navigate to the down on the search results
+     * @property {Number[]} prevent - Keys should be prevented on search results selection
      */
     this.keyboard = {
       cancel: [27],
       select: [9, 13],
       ignored: [37, 39, 38, 40, 13, 27, 16, 9],
       up: [38],
-      down: [40]
+      down: [40],
+      prevent: [9, 13]
     }
 
     this.init()
@@ -132,6 +136,7 @@ class DSAutocomplete {
 
   /**
    * Initiate plugin
+   * @public
    */
   init () {
     if (!this.getSearchResultsContainer()) {
@@ -163,6 +168,7 @@ class DSAutocomplete {
   attachSearchResultsContainer (el) {
     document.body.append(el)
     this.elements.results = el
+    this.elements.results.style.position = 'absolute'
   }
 
   /**
@@ -216,7 +222,7 @@ class DSAutocomplete {
    * Handle case, when the search input got focus
    */
   handleFocus () {
-    if (this.state.results && this.state.results.length) {
+    if (this.state.results && this.state.results.length && this.config.showResultsOnFocus) {
       this.showResults(true)
     }
   }
@@ -272,7 +278,6 @@ class DSAutocomplete {
    */
   handleKeyDownOnInput (e) {
     const key = this.getKeyCodeFromEvent(e)
-    const isTabKey = key === 9
 
     if (
       this.keyboard.select.indexOf(key) >= 0 &&
@@ -280,9 +285,10 @@ class DSAutocomplete {
       !this.isResultsVisible() &&
       this.state.results[this.state.focusedResult]
     ) {
-      if (isTabKey) {
+      if (this.keyboard.prevent.indexOf(key) >= 0) {
         e.preventDefault()
       }
+
       this.elements.input.value = this.state.results[this.state.focusedResult][this.config.itemValuePropertyName]
     } else if (this.isNavigationKey(key)) {
       e.preventDefault()
@@ -310,11 +316,7 @@ class DSAutocomplete {
       this.showResults()
     }
 
-    if (this.isCancelKey(key)) {
-      this.hideResults()
-    }
-
-    if (isTabKey) {
+    if (this.isCancelKey(key) || this.keyboard.select.indexOf(key) >= 0) {
       this.hideResults()
     }
   }
@@ -492,7 +494,7 @@ class DSAutocomplete {
    * Shows loading message while searching results
    * Shows results (or no results message) when done
    * @param  {String} query Search query
-   * @param  {Function|Object|Array|Promise} items Search source
+   * @param  {(Function|Object|Array|Promise)} items Search source
    */
   searchResults (query, items) {
     this.state.focusedResult = null
@@ -523,20 +525,20 @@ class DSAutocomplete {
    * Get search results from given source.
    * Returns Promise, what should be resolved with array of results on success
    * @param  {String} query - Search query
-   * @param  {DSASearchResultsSource|DSASearchResultsCallback} src - Search source
+   * @param  {(DSASearchResultsSource|DSASearchResultsCallback)} src - Search source
    * @return {Promise} - Search results promise
    */
   getSearchResultsFromSource (query, src) {
-    let result
+    let result = src
 
-    if (typeof src === 'function') {
-      result = src(query)
+    if (typeof result === 'function') {
+      result = result(query)
     }
 
-    if (src instanceof Promise) {
-      return src
-    } else if (src instanceof Object) {
-      result = Object.values(src)
+    if (result instanceof Promise) {
+      return result
+    } else if (result instanceof Object) {
+      result = Object.values(result)
     }
 
     return new Promise((resolve, reject) => {
@@ -550,7 +552,7 @@ class DSAutocomplete {
 
   /**
    * Get event key code
-   * @param {KeyboardEvent|MouseEvent} e
+   * @param {(KeyboardEvent|MouseEvent)} e
    * @return {Number}
    */
   getKeyCodeFromEvent (e) {

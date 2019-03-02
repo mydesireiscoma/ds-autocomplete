@@ -1,0 +1,62 @@
+@import url("https://fonts.googleapis.com/css?family=Inconsolata");
+
+.ds-container {
+  font-family: 'Incosolata', monospace;
+  font-size: 16px;
+}
+
+.ds-article {
+  margin: 40px 0;
+}
+
+.ds-article_sub {
+  margin: 30px 0;
+}
+
+.ds-article__sub:last-child {
+  margin-bottom: 0;
+}
+
+.ds-article__title {
+  text-align: center;
+  font-size: 1.5em;
+  font-weight: normal;
+  padding: 0;
+  margin: 1em;
+}
+
+.ds-article .ds-article .ds-article__title {
+  font-size: 1.2em;
+}
+
+.ds-article__paragraph {
+  display: block;
+}
+
+.ds-article__paragraph_textonly:before {
+  content: "\00a0\00a0\00a0";
+}
+
+.ds-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.ds-head {
+  text-align: center;
+  padding: 0 0 40px;
+  border-bottom: 1px dashed #333;
+}
+
+.ds-head__title {
+  font-size: 2em;
+}
+
+.ds-kitten {
+  margin: 20px auto;
+  display: block;
+  width: 112px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}

@@ -1,9 +1,9 @@
-* @todo handle arrays what contains non-object values (i.e. string, int, etc)
-* @todo what actually should be selected? look for the item/key values and check if they are correct and used correctly
-* @todo provide callbacks for each step on the lifecycle
-* @todo allow user to override some critical parts by providing custom functions (i.e. search results, filter results, select item)
-* @todo allow user to control search results position and mb other behaviour
-* @todo allow user to control what actually should be displayed in input
-* @todo tests
-* @todo Handle middle mouse key
-* @todo refactoring required
+ - handle arrays what contains non-object values (i.e. string, int, etc)
+ - what actually should be selected? look for the item/key values and check if they are correct and used correctly
+ - provide callbacks for each step on the lifecycle
+ - allow user to override some critical parts by providing custom functions (i.e. search results, filter results, select item)
+ - allow user to control search results position and mb other behaviour
+ - allow user to control what actually should be displayed in input
+ - handle middle mouse key
+ - look, is it possible to override default input laf
+ - move dropdown to the top if there is not enough space at the bottom and there is a lot space at the top
