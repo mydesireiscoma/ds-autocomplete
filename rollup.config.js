@@ -1,43 +1,46 @@
+import path from 'path'
 import json from 'rollup-plugin-json'
 import babel from 'rollup-plugin-babel'
 import standard from 'rollup-plugin-standard'
 
 const formats = ['umd', 'esm']
 
-const babelConfig = babel({
-  exclude: 'node_modules/**',
-  babelrc: false,
-  presets: ['@babel/preset-env']
-})
+const basePlugins = [
+  standard({
+    exclude: ['dist/*']
+  }),
+  babel({
+    exclude: 'node_modules/**',
+    babelrc: false,
+    presets: ['@babel/preset-env']
+  })
+]
 
-const standardConfig = standard({
-  exclude: ['dist/*']
-})
+const getOutputsConfig = (formats, folder = 'dist') => {
+  const outputs = []
 
-const getConfigForFormat = (format) => {
-  const file = format === 'umd' ? `dist/autocomplete.dist.js` : `dist/autocomplete.${format}.dist.js`
-  return {
-    input: 'src/index.js',
-    output: {
+  formats.forEach((format) => {
+    const filename = format === 'umd' ? `autocomplete.dist.js` : `autocomplete.${format}.dist.js`
+
+    outputs.push({
       name: 'DSAutocomplete',
-      file,
+      file: path.join(folder, filename),
       format
-    },
-    plugins: [
-      standardConfig,
-      babelConfig
-    ]
-  }
+    })
+  })
+
+  return outputs
 }
 
-const DSARollupConfigs = []
-
-formats.forEach((format) => {
-  DSARollupConfigs.push(getConfigForFormat(format))
-})
-
 export default [
-  ...DSARollupConfigs,
+  {
+    input: 'src/index.js',
+    output: [
+      ...getOutputsConfig(formats),
+      ...getOutputsConfig(['umd'], 'docs')
+    ],
+    plugins: basePlugins
+  },
   {
     input: 'docs/docs.js',
     output: {
@@ -46,8 +49,7 @@ export default [
       external: ['prismjs', 'Prism']
     },
     plugins: [
-      standardConfig,
-      babelConfig,
+      ...basePlugins,
       json({
         preferConst: true,
         compact: true

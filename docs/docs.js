@@ -3,6 +3,7 @@ import items from './items.json'
 import DSAutocomplete from '../dist/autocomplete.esm.dist'
 
 /* eslint-env browser */
+
 /* eslint-disable no-new */
 
 function getResultsAsync (query) {
