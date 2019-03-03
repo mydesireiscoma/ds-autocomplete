@@ -35,11 +35,12 @@ class DSAutocomplete {
    */
   /**
    * Autocomplete constructor
+   * @constructor
    * @param {HTMLInputElement} element HTML input element
-   * @param {DSAConfig} options Plugin config
-   * @param {DSAKeyboardConfig} keyboardOptions Plugin keyboard options
+   * @param {DSAConfig} config Plugin config
+   * @param {DSAKeyboardConfig} keyboardConfig Plugin keyboard options
    */
-  constructor (element, options, keyboardOptions) {
+  constructor (element, config, keyboardConfig = {}) {
     /**
      * Autocomplete config
      * @public
@@ -75,7 +76,7 @@ class DSAutocomplete {
      * @public
      * @type {DSAConfig}
      */
-    this.config = Object.assign(this.defaultConfig, options)
+    this.config = Object.assign(this.defaultConfig, config)
 
     /**
      * Plugin elements
@@ -122,14 +123,21 @@ class DSAutocomplete {
      * @property {Number[]} down - Keys used to navigate to the down on the search results
      * @property {Number[]} prevent - Keys should be prevented on search results selection
      */
-    this.keyboard = {
+    this.defaultKeyboardConfig = {
       cancel: [27],
       select: [9, 13],
-      ignored: [37, 39, 38, 40, 13, 27, 16, 9],
+      ignored: [37, 39, 38, 40, 13, 27, 16, 9, 17, 18],
       up: [38],
       down: [40],
       prevent: [9, 13]
     }
+
+    /**
+     * Actual plugin config
+     * @public
+     * @type {DSAKeyboardConfig}
+     */
+    this.keyboard = Object.assign(this.defaultKeyboardConfig, keyboardConfig)
 
     this.init()
   }
@@ -289,7 +297,7 @@ class DSAutocomplete {
         e.preventDefault()
       }
 
-      this.elements.input.value = this.state.results[this.state.focusedResult][this.config.itemValuePropertyName]
+      this.selectFocusedItem()
     } else if (this.isNavigationKey(key)) {
       e.preventDefault()
 
@@ -395,7 +403,7 @@ class DSAutocomplete {
     const itemElement = document.createElement('div')
 
     itemElement.className = config.itemClass
-    itemElement.innerText = itemData[config.itemValuePropertyName]
+    itemElement.innerText = itemData instanceof Object ? itemData[config.itemValuePropertyName] : itemData
 
     return itemElement
   }
@@ -430,12 +438,22 @@ class DSAutocomplete {
 
       searchResultsElement.addEventListener('click', () => {
         this.state.focusedResult = index
-        this.elements.input.value = this.state.results[this.state.focusedResult][this.config.itemValuePropertyName]
+        this.selectFocusedItem()
         this.hideResults()
       })
     })
 
     return documentFragment
+  }
+
+  selectFocusedItem () {
+    let selectedItem = this.state.results[this.state.focusedResult]
+
+    if (selectedItem instanceof Object) {
+      selectedItem = selectedItem[this.config.itemValuePropertyName]
+    }
+
+    this.elements.input.value = selectedItem
   }
 
   /**
@@ -448,7 +466,6 @@ class DSAutocomplete {
     this.elements.results.style.left = autocompleteBounds.left + 'px'
     this.elements.results.style.width = autocompleteBounds.width + 'px'
     this.elements.results.setAttribute('tabindex', '-1')
-    this.elements.input.style.backgroundColor = 'red'
   }
 
   /**
@@ -513,12 +530,13 @@ class DSAutocomplete {
         this.state.results = []
       }).finally(() => {
         if (jailedDebounceValue === this.state.debounce) {
+          console.log('shown')
           this.showResults()
         } else {
           this.showLoading()
         }
       })
-    }, 250)
+    }, 200)
   }
 
   /**

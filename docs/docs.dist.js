@@ -1097,11 +1097,14 @@
 
     /**
      * Autocomplete constructor
+     * @constructor
      * @param {HTMLInputElement} element HTML input element
-     * @param {DSAConfig} options Plugin config
-     * @param {DSAKeyboardConfig} keyboardOptions Plugin keyboard options
+     * @param {DSAConfig} config Plugin config
+     * @param {DSAKeyboardConfig} keyboardConfig Plugin keyboard options
      */
-    function DSAutocomplete(element, options, keyboardOptions) {
+    function DSAutocomplete(element, config) {
+      var keyboardConfig = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
       _classCallCheck(this, DSAutocomplete);
       /**
        * Autocomplete config
@@ -1140,7 +1143,7 @@
          */
 
       };
-      this.config = Object.assign(this.defaultConfig, options);
+      this.config = Object.assign(this.defaultConfig, config);
       /**
        * Plugin elements
        * @private
@@ -1187,14 +1190,21 @@
          */
 
       };
-      this.keyboard = {
+      this.defaultKeyboardConfig = {
         cancel: [27],
         select: [9, 13],
-        ignored: [37, 39, 38, 40, 13, 27, 16, 9],
+        ignored: [37, 39, 38, 40, 13, 27, 16, 9, 17, 18],
         up: [38],
         down: [40],
         prevent: [9, 13]
+        /**
+         * Actual plugin config
+         * @public
+         * @type {DSAKeyboardConfig}
+         */
+
       };
+      this.keyboard = Object.assign(this.defaultKeyboardConfig, keyboardConfig);
       this.init();
     }
     /**
@@ -1388,7 +1398,7 @@
             e.preventDefault();
           }
 
-          this.elements.input.value = this.state.results[this.state.focusedResult][this.config.itemValuePropertyName];
+          this.selectFocusedItem();
         } else if (this.isNavigationKey(key)) {
           e.preventDefault();
 
@@ -1509,7 +1519,7 @@
       value: function buildSearchItemTemplate(itemData, config) {
         var itemElement = document.createElement('div');
         itemElement.className = config.itemClass;
-        itemElement.innerText = itemData[config.itemValuePropertyName];
+        itemElement.innerText = itemData instanceof Object ? itemData[config.itemValuePropertyName] : itemData;
         return itemElement;
       }
       /**
@@ -1545,12 +1555,24 @@
           documentFragment.appendChild(searchResultsElement);
           searchResultsElement.addEventListener('click', function () {
             _this2.state.focusedResult = index;
-            _this2.elements.input.value = _this2.state.results[_this2.state.focusedResult][_this2.config.itemValuePropertyName];
+
+            _this2.selectFocusedItem();
 
             _this2.hideResults();
           });
         });
         return documentFragment;
+      }
+    }, {
+      key: "selectFocusedItem",
+      value: function selectFocusedItem() {
+        var selectedItem = this.state.results[this.state.focusedResult];
+
+        if (selectedItem instanceof Object) {
+          selectedItem = selectedItem[this.config.itemValuePropertyName];
+        }
+
+        this.elements.input.value = selectedItem;
       }
       /**
        * Updates search results container position
@@ -1564,7 +1586,6 @@
         this.elements.results.style.left = autocompleteBounds.left + 'px';
         this.elements.results.style.width = autocompleteBounds.width + 'px';
         this.elements.results.setAttribute('tabindex', '-1');
-        this.elements.input.style.backgroundColor = 'red';
       }
       /**
        * Builtin search function.
@@ -1632,12 +1653,14 @@
             _this4.state.results = [];
           }).finally(function () {
             if (jailedDebounceValue === _this4.state.debounce) {
+              console.log('shown');
+
               _this4.showResults();
             } else {
               _this4.showLoading();
             }
           });
-        }, 250);
+        }, 200);
       }
       /**
        * Get search results from given source.
@@ -1700,7 +1723,31 @@
 
   /* eslint-disable no-new */
 
-  function getResultsAsync(query) {
+  var itemsPA = ['one', 'two', 'three'];
+  var autocompletePAInput = document.querySelector('#autocomplete-plain-array');
+  new DSAutocomplete(autocompletePAInput, {
+    items: itemsPA
+  });
+  var autocompleteOAInput = document.querySelector('#autocomplete-objects-array');
+  new DSAutocomplete(autocompleteOAInput, {
+    items: items,
+    itemValuePropertyName: 'country'
+  });
+  var itemsO = {};
+  items.forEach(function (item) {
+    itemsO[item.country] = item;
+  });
+  var autocompleteOInput = document.querySelector('#autocomplete-object');
+  new DSAutocomplete(autocompleteOInput, {
+    items: itemsO,
+    itemValuePropertyName: 'country'
+  });
+
+  var itemsF = function itemsF() {
+    return ['one', 'two', 'three'];
+  };
+
+  var itemsP = function itemsP(query) {
     return new Promise(function (resolve, reject) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', 'https://api.github.com/search/repositories?q=' + query);
@@ -1715,28 +1762,15 @@
 
       xhr.send();
     });
-  }
+  };
 
-  document.querySelectorAll('.autocomplete__input').forEach(function (el) {
-    if (el.classList.contains('async')) {
-      new DSAutocomplete(el, {
-        items: function items$$1(query) {
-          return getResultsAsync(query);
-        }
-      });
-    } else if (el.classList.contains('object')) {
-      new DSAutocomplete(el, {
-        items: items,
-        itemValuePropertyName: 'country'
-      });
-    } else if (el.classList.contains('plain')) {
-      new DSAutocomplete(el, {
-        items: items.map(function (item) {
-          return item.country;
-        }),
-        itemValuePropertyName: 'country'
-      });
-    }
+  var autocompleteFInput = document.querySelector('#autocomplete-function');
+  new DSAutocomplete(autocompleteFInput, {
+    items: itemsF
+  });
+  var autocompletePInput = document.querySelector('#autocomplete-promise');
+  new DSAutocomplete(autocompletePInput, {
+    items: itemsP
   });
 
 }());

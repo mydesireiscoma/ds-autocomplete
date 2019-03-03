@@ -6,7 +6,26 @@ import DSAutocomplete from '../dist/autocomplete.esm.dist'
 
 /* eslint-disable no-new */
 
-function getResultsAsync (query) {
+const itemsPA = ['one', 'two', 'three']
+const autocompletePAInput = document.querySelector('#autocomplete-plain-array')
+new DSAutocomplete(autocompletePAInput, { items: itemsPA })
+
+const autocompleteOAInput = document.querySelector('#autocomplete-objects-array')
+new DSAutocomplete(autocompleteOAInput, { items, itemValuePropertyName: 'country' })
+
+const itemsO = {}
+items.forEach((item) => {
+  itemsO[item.country] = item
+})
+
+const autocompleteOInput = document.querySelector('#autocomplete-object')
+new DSAutocomplete(autocompleteOInput, { items: itemsO, itemValuePropertyName: 'country' })
+
+const itemsF = () => {
+  return ['one', 'two', 'three']
+}
+
+const itemsP = (query) => {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
 
@@ -24,22 +43,8 @@ function getResultsAsync (query) {
   })
 }
 
-document.querySelectorAll('.autocomplete__input').forEach((el) => {
-  if (el.classList.contains('async')) {
-    new DSAutocomplete(el, {
-      items: (query) => {
-        return getResultsAsync(query)
-      }
-    })
-  } else if (el.classList.contains('object')) {
-    new DSAutocomplete(el, {
-      items: items,
-      itemValuePropertyName: 'country'
-    })
-  } else if (el.classList.contains('plain')) {
-    new DSAutocomplete(el, {
-      items: items.map((item) => item.country),
-      itemValuePropertyName: 'country'
-    })
-  }
-})
+const autocompleteFInput = document.querySelector('#autocomplete-function')
+new DSAutocomplete(autocompleteFInput, { items: itemsF })
+
+const autocompletePInput = document.querySelector('#autocomplete-promise')
+new DSAutocomplete(autocompletePInput, { items: itemsP })

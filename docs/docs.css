@@ -1,5 +1,7 @@
 @import url("https://fonts.googleapis.com/css?family=Inconsolata");
 
+.autocomplete__result,
+.autocomplete__input,
 .ds-container {
   font-family: 'Incosolata', monospace;
   font-size: 16px;
@@ -52,11 +54,99 @@
   font-size: 2em;
 }
 
-.ds-kitten {
+.ds-kitten,
+.ds-kitten-idle {
   margin: 20px auto;
   display: block;
   width: 112px;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
+}
+
+.ds-kitten-idle {
+  display: none;
+}
+
+.ds-kitten-container:hover .ds-kitten-idle {
+  display: block;
+}
+
+.ds-kitten-container:hover .ds-kitten {
+  display: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.autocomplete {
+  position: relative;
+  display: inline-block;
+}
+
+.autocomplete__controls, .autocomplete__label, .autocomplete__input, .autocomplete__result {
+  width: 100%;
+  display: block;
+}
+
+.autocomplete__result {
+  padding: 4px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.autocomplete__result:hover {
+  background-color: rgb(175, 175, 175);
+}
+
+.autocomplete__label {
+  position: absolute;
+  display: none;
+}
+
+.autocomplete__input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  padding: 4px 8px;
+  margin: 0;
+  color: #333;
+  box-shadow: rgba(0,0,0,0.25) 0 1px 4px 0;
+  display: inline-block;
+  width: auto;
+}
+
+.autocomplete__input:focus {
+  outline: none;
+  border-color: #5892f8;
+}
+
+.autocomplete__input::placeholder {
+  color: #666;
+}
+
+.autocomplete__results {
+  position: absolute;
+  border: 1px solid #a9a9a9;
+  margin-top: -1px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: rgba(0,0,0,0.25) 0 4px 4px 2px;
+}
+
+.autocomplete__results_hidden {
+  display: none;
+}
+
+.autocomplete__result.autocomplete__result_focused {
+  background-color: #5892f8;
+  color: #fff;
+  cursor: default;
 }
